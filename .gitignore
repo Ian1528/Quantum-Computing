@@ -1,0 +1,8 @@
+.venv
+.idea
+_pycache_
+.vscode
+build
+data_analysis
+output
+dist
