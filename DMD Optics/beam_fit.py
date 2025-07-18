@@ -146,6 +146,9 @@ def draw_boundaries_around_spots_2d(image, array_size, plot_info="indices"):
     plt.show()
 
 def gaussian_plus_uniform(xy, A, x0, y0, sigma_x, sigma_y, C):
+    """
+    Gaussian function with a uniform background.
+    """
     x, y = xy
     g = A * np.exp(-((x - x0)**2 / (2 * sigma_x**2) + (y - y0)**2 / (2 * sigma_y**2))) + C 
     return g.ravel()
@@ -283,6 +286,8 @@ def hdr_merge(images, exposure_times, bit_depth=8):
         exposure_times (list of float): Corresponding exposure times for each image.
         bit_depth (int, optional): Number of bits per pixel in the images. For example, 8 for 8-bit images with ranges 0-255. Defaults to 8.
 
+    Returns:
+        np.ndarray: HDR merged image.
     """
     images_stacked = np.stack(images)
     images_stacked_filtered = np.where(images_stacked >= (2**bit_depth - 1), 0, images_stacked)
@@ -301,14 +306,15 @@ def hdr_merge(images, exposure_times, bit_depth=8):
 
 def compute_nearest_neighbor_crosstalk(y:int, x:int, spot_array_size, full_array_img:np.ndarray, images: list[np.ndarray], exposure_times: np.ndarray[float], spot_bucket_hw: int, r:int) -> np.ndarray:
     """
-    Computes the nearest neighbor crosstalk for a given spot (x, y) in a list of images.
+    Computes the nearest neighbor crosstalk for a given spot (x, y) in the array.
 
     Args:
         y (int): y-coordinate of the spot in the peaks indices array (vertical, first indice in numpy array).
         x (int): x-coordinate of the spot in the peaks indices array (horizontal, second indice in numpy array).
         spot_array_size (int): Size of the 2D array of spots (e.g., 11 for an 11x11 grid).
-        full_array_img (np.ndarray): The full array image, with all spots clearly visible. Must be same shape as images.
-        images (list[np.ndarray]): List of images to analyze.
+        full_array_img (np.ndarray): The full array image, with all spots clearly visible. Must be same shape as the stack of images.
+        images (list[np.ndarray]): List of images to analyze with only one spot turned on (should correspond to exposure_times array)
+        exposure_times (np.ndarray[float]): List of exposure times.
         spot_bucket_hw (int): Half-width of the spot bucket.
         r (int): Radius around the pixel to consider for crosstalk.
 
@@ -323,7 +329,6 @@ def compute_nearest_neighbor_crosstalk(y:int, x:int, spot_array_size, full_array
     x1, x2 = int(middle_x - spot_bucket_hw), int(middle_x + spot_bucket_hw + 1)
     y1, y2 = int(middle_y - spot_bucket_hw), int(middle_y + spot_bucket_hw + 1)
 
-    # draw the region of middle bin intensity on top of the hdr image
     # Draw the region of middle bin intensity on top of the HDR image
     fig, ax = plt.subplots(figsize=(8, 8))
     ax.imshow(final_image, cmap='viridis')
@@ -360,7 +365,7 @@ def compute_nearest_neighbor_crosstalk(y:int, x:int, spot_array_size, full_array
 
 def single_spot_crosstalk(y:int, x:int, peaks_indices, hdr_img: np.ndarray[float], spot_bucket_hw: int, r:int) -> np.ndarray:
     """
-    Computes the nearest neighbor crosstalk for a given spot (x, y) in a list of images.
+    Computes the nearest neighbor crosstalk for a given spot (x, y) in a list of images. Helper function for average_nn_crosstalk_whole_array.
 
     Args:
         y (int): y-coordinate of the spot in the peaks indices array (vertical, first indice in numpy array).
@@ -372,7 +377,10 @@ def single_spot_crosstalk(y:int, x:int, peaks_indices, hdr_img: np.ndarray[float
         r (int): Radius around the pixel to consider for crosstalk.
 
     Returns:
-        np.ndarray: Crosstalk values for each image.
+        list[np.ndarray, np.ndarray, np.ndarray]:
+            crosstalk values in intensity
+            crosstalk values in dB
+            counts, describing which neighbors were accounted for 
     """
     
     middle_y, middle_x = peaks_indices[y, x]
@@ -485,6 +493,21 @@ def average_nn_crosstalk_whole_array(
 
 
 def get_band_profile(band_image, plot_images, half_width=10, logscale=True):
+    """
+    Extracts and plots the normalized intensity profile of a band from a 2D image.
+    This function identifies the row with the maximum summed intensity in the input image,
+    extracts a horizontal band centered on this row, collapses the band to a 1D profile,
+    normalizes and optionally smooths the profile, and then plots the results along with
+    the original images and band location.
+    Args:
+        band_image (np.ndarray): 2D array representing the image containing the band.
+        plot_images (list of np.ndarray): List of 2D arrays (images) to display with the band overlay.
+        half_width (int, optional): Half the width (in pixels) of the band to extract around the maximum row. Default is 10.
+        logscale (bool, optional): If True, plots the intensity profile on a logarithmic y-axis. Default is True.
+    Returns:
+        None. Displays plots of the band region and its normalized intensity profile.
+    """
+
     row_max = np.argmax(band_image.sum(axis=1))
     final_band = band_image[row_max-half_width : row_max+half_width+1, :]
     horizontal_lines = [row_max - half_width, row_max + half_width]  # for plotting horizontal lines

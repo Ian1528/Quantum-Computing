@@ -1,7 +1,6 @@
 import os
 from pymba import Vimba
 import numpy as np
-from scipy import ndimage
 import matplotlib.pyplot as plt
 
 def take_single_shot(exposure_time):
@@ -27,7 +26,8 @@ def take_single_shot(exposure_time):
     return image
 def take_multiple_exposures(exposure_times, destination=None):
     """
-    Takes and returns a list of images, each taken with a different exposure time.
+    Takes and returns a list of images, each taken with a different exposure time. Saves the images 
+    to a directory if provided.
 
     Args:
         exposure_times (list of int): List of exposure times in microseconds.
